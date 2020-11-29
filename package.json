@@ -1,0 +1,35 @@
+{
+  "name": "flash-card",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": {
+    "nohoist": [
+      "**/sapper/**"
+    ],
+    "packages": [
+      "packages/*"
+    ]
+  },
+  "scripts": {
+    "commit": "cz",
+    "test": "yarn workspaces run test",
+    "lint": "yarn workspaces run lint"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^11.0.0",
+    "commitlint": "^11.0.0",
+    "cz-conventional-changelog": "^3.3.0",
+    "husky": "^5.0.4",
+    "prettier": "^2.1.2"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  }
+}

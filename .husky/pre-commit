@@ -1,0 +1,9 @@
+#!/bin/sh
+. "$(dirname $0)/_/husky.sh"
+
+# testing src code
+yarn lint
+yarn test
+
+# testing commit message
+yarn commitlint --edit $1
