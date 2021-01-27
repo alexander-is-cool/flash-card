@@ -19,6 +19,7 @@ localVue.component('NuxtLink', {
 
 let store: Store<any>;
 let searchStore: Search;
+
 beforeEach(() => {
   store = new Vuex.Store({
     modules: {

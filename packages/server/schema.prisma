@@ -7,18 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Session {
+  userId            String   @id @map("user_id")
+  sessionId         String   @unique @map("session_id")
+  sessionExpiration DateTime @map("session_expiration")
+  user              User     @relation("userSession", fields: [userId], references: [userId])
+
+  @@map("sessions")
+}
+
+
 model User {
+  /// This field's default value can currently not be parsed: `uuid_generate_v4()`.
   userId       String   @id @default(dbgenerated()) @map("user_id")
   username     String   @unique
   passwordHash String   @map("password_hash")
-  refreshToken String?  @unique @map("refresh_token")
   createdAt    DateTime @default(now()) @map("created_at")
   decks        Deck[]
+  session      Session? @relation("userSession")
 
   @@map("users")
 }
 
 model Deck {
+  /// This field's default value can currently not be parsed: `uuid_generate_v4()`.
   deckId    String   @id @default(dbgenerated()) @map("deck_id")
   userId    String   @map("user_id")
   name      String?  @map("deck_name")

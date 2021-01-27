@@ -31,6 +31,10 @@
         "js": "never",
         "ts": "never"
       }
+    ],
+    "max-classes-per-file": [
+      "warn",
+      1
     ]
   }
 }

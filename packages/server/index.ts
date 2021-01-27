@@ -1,19 +1,9 @@
 import createApp from '~/app';
 
-require('dotenv').config();
-
-declare global {
-  namespace NodeJS {
-    interface Process {
-      isDev: boolean;
-    }
-  }
-}
-
-process.isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === 'development';
 
 const server = createApp({
-  logger: process.isDev ? { prettyPrint: true } : false,
+  logger: isDev ? { prettyPrint: true } : false,
 });
 
 server.listen(process.env.PORT || 3000, (err, address) => {
@@ -24,6 +14,6 @@ server.listen(process.env.PORT || 3000, (err, address) => {
   server.log.info(`server listening on ${address}`);
 });
 
-process.on('SIGINT', () => {
+process.on('exit', () => {
   server.close();
 });

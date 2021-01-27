@@ -1,14 +1,16 @@
-const path = require('path');
+import type { NuxtConfig } from '@nuxt/types';
+import * as path from 'path';
 
-module.exports = {
+const config: NuxtConfig = {
+  server: { port: 8000 },
   srcDir: path.resolve(__dirname),
   buildDir: path.resolve(__dirname, '.nuxt'),
   css: ['~/assets/css/styles.css'],
   plugins: ['~/plugins/composition.ts'],
   buildModules: ['@nuxt/typescript-build'],
   build: {
-    extend: (config) => {
-      const svgRule = config.module.rules.find((rule) =>
+    extend(config: any) {
+      const svgRule = config.module.rules.find((rule: any) =>
         rule.test.test('.svg'),
       );
 
@@ -22,3 +24,5 @@ module.exports = {
   },
   telemetry: false,
 };
+
+export default config;

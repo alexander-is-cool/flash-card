@@ -1,108 +1,85 @@
-import { FastifyPluginCallback as Plugin } from 'fastify';
-import { v4 as uuid4 } from 'uuid';
-import jwt from 'jsonwebtoken';
+import type { FastifyPluginCallback as Plugin } from 'fastify';
 import bcrypt from 'bcrypt';
 
-interface Credentials {
-  username: string;
-  password: string;
-}
+import type { Credentials, SessionId } from '~/types';
+import { validateParamIds } from '~/utils/middleware';
+import { AuthenticationError, NotFoundError } from '~/utils/errors';
 
 const sessionRouter: Plugin = (app, opts, done) => {
-  const credentialsSchema = {
-    type: 'object',
-    required: ['username', 'password'],
-    properties: {
-      username: { type: 'string' },
-      password: { type: 'string' },
-    },
-  };
-
-  const tokenSchema = {
-    type: 'object',
-    properties: {
-      token: { type: 'string' },
-      refreshToken: { type: 'string' },
-    },
-  };
-
-  app.get('/', (request, reply) => {
-    reply.send('sessions');
-  });
-
-  app.post(
-    '/signup',
-    {
-      schema: {
-        body: credentialsSchema,
-        response: {
-          200: tokenSchema,
-        },
-      },
-    },
-    async (request, reply) => {
+  app.post('/', {
+    async handler(request, reply) {
       const { username, password } = request.body as Credentials;
 
-      const { userId, refreshToken } = await app.prisma.user.create({
-        data: {
-          username,
-          passwordHash: await bcrypt.hash(password, 10),
-          refreshToken: uuid4(),
-        },
-      });
-
-      const token = jwt.sign({ userId }, process.env.SECRET as string, {
-        expiresIn: '5min',
-      });
-
-      reply.send({ token, refreshToken });
-    },
-  );
-
-  app.post(
-    '/login',
-    {
-      schema: {
-        body: credentialsSchema,
-        response: {
-          200: tokenSchema,
-          401: { $ref: 'errorSchema' },
-        },
-      },
-    },
-    async (request, reply) => {
-      const { username, password } = request.body as Credentials;
-
-      const user = await app.prisma.user.findOne({
-        where: {
-          username,
-        },
+      const user = await app.prisma.user.findUnique({
+        where: { username },
       });
 
       if (user && (await bcrypt.compare(password, user.passwordHash))) {
-        const { userId, refreshToken } = await app.prisma.user.update({
-          where: {
-            username,
-          },
-          data: {
-            refreshToken: uuid4(),
-          },
-        });
+        const session = await app.generateSession(user.userId);
 
-        const token = jwt.sign({ userId }, process.env.SECRET as string, {
-          expiresIn: '5min',
-        });
-
-        reply.send({ token, refreshToken });
+        reply.code(201).send(session);
       } else {
-        reply.code(401).send({
-          code: reply.statusCode,
-          error: 'Wrong credentials',
-          message: 'The username and password provided does not match',
-        });
+        reply.send(
+          new AuthenticationError('the username and password do not match'),
+        );
       }
     },
-  );
+
+    schema: {
+      body: {
+        $ref: 'credentialsSchema',
+      },
+      response: {
+        201: { $ref: 'sessionSchema' },
+      },
+    },
+  });
+
+  app.post('/:sessionId/refresh', {
+    preHandler: [validateParamIds],
+
+    async handler(request, reply) {
+      const { sessionId } = request.params as SessionId;
+
+      const session = await app.prisma.session.findUnique({
+        where: { sessionId },
+      });
+
+      if (session && (session.sessionExpiration as Date) > new Date()) {
+        const newSession = await app.generateSession(session.userId);
+
+        reply.send(newSession);
+      } else {
+        reply.send(new NotFoundError('session does not exist'));
+      }
+    },
+
+    schema: {
+      response: {
+        201: { $ref: 'sessionSchema' },
+      },
+    },
+  });
+
+  app.delete('/:sessionId', {
+    preHandler: [validateParamIds],
+
+    async handler(request, reply) {
+      const { sessionId } = request.params as SessionId;
+
+      await app.prisma.session.delete({ where: { sessionId } });
+
+      reply.code(204).send();
+    },
+
+    errorHandler(error, request, reply) {
+      if (error.code === 'P2016') {
+        reply.send(new NotFoundError('session does not exist'));
+      } else {
+        app.errorHandler(error, request, reply);
+      }
+    },
+  });
 
   done();
 };
